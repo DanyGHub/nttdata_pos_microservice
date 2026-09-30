@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InventoryController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Inventory POS Service</a> &gt; <a href="index.source.html" class="el_package">com.masterclass.inventory.controller</a> &gt; <span class="el_source">InventoryController.java</span></div><h1>InventoryController.java</h1><pre class="source lang-java linenums">package com.masterclass.inventory.controller;
+
+import com.masterclass.inventory.dto.InventoryDtos.AdjustmentCommand;
+import com.masterclass.inventory.dto.InventoryDtos.InventoryCommand;
+import com.masterclass.inventory.dto.InventoryDtos.MovementResponse;
+import com.masterclass.inventory.service.InventoryService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping(&quot;/api/v1/inventory&quot;)
+@RequiredArgsConstructor
+@Tag(name = &quot;inventory-controller&quot;, description = &quot;Endpoints for inventory replenishment, adjustments, and movement audit history&quot;)
+public class InventoryController {
+
+    private final InventoryService service;
+
+    @PostMapping(&quot;/replenishment&quot;)
+    @Operation(summary = &quot;Replenish stock&quot;, description = &quot;Increases current product stock and records an audit movement row of type REPLENISHMENT&quot;)
+    public ResponseEntity&lt;MovementResponse&gt; replenish(@Valid @RequestBody InventoryCommand c) {
+<span class="nc" id="L28">        return ResponseEntity.status(HttpStatus.CREATED).body(service.replenish(c));</span>
+    }
+
+    @PostMapping(&quot;/adjustment&quot;)
+    @Operation(summary = &quot;Adjust inventory&quot;, description = &quot;Performs an inventory adjustment (ADJUSTMENT_IN or ADJUSTMENT_OUT) and records a movement row&quot;)
+    public ResponseEntity&lt;MovementResponse&gt; adjust(@Valid @RequestBody AdjustmentCommand c) {
+<span class="nc" id="L34">        return ResponseEntity.status(HttpStatus.CREATED).body(service.adjust(c));</span>
+    }
+
+    @GetMapping(&quot;/movements/{productId}&quot;)
+    @Operation(summary = &quot;Get movement history&quot;, description = &quot;Retrieves all historical inventory movements for a given product ordered by date descending&quot;)
+    public List&lt;MovementResponse&gt; history(@PathVariable Long productId) {
+<span class="nc" id="L40">        return service.history(productId);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

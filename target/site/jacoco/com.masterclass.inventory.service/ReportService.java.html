@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReportService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Inventory POS Service</a> &gt; <a href="index.source.html" class="el_package">com.masterclass.inventory.service</a> &gt; <span class="el_source">ReportService.java</span></div><h1>ReportService.java</h1><pre class="source lang-java linenums">package com.masterclass.inventory.service;
+
+import com.masterclass.inventory.dto.InventoryDtos.MovementResponse;
+import com.masterclass.inventory.dto.ReportDtos.DailySalesReport;
+import com.masterclass.inventory.dto.ReportDtos.ProductInventoryReport;
+import com.masterclass.inventory.entity.Product;
+import com.masterclass.inventory.entity.ProductStatus;
+import com.masterclass.inventory.repository.ProductRepository;
+import com.masterclass.inventory.repository.SaleRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class ReportService {
+
+    private final ProductRepository products;
+    private final SaleRepository sales;
+    private final InventoryService inventoryService;
+
+    @Transactional(readOnly = true)
+    public List&lt;ProductInventoryReport&gt; inventory() {
+<span class="fc" id="L29">        return products.findAllWithCategory().stream()</span>
+<span class="fc" id="L30">                .map(this::toProductInventoryReport)</span>
+<span class="fc" id="L31">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;ProductInventoryReport&gt; lowStock() {
+<span class="fc" id="L36">        return products.findLowStock(ProductStatus.ACTIVE).stream()</span>
+<span class="fc" id="L37">                .map(this::toProductInventoryReport)</span>
+<span class="fc" id="L38">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public DailySalesReport daily(LocalDate date) {
+<span class="pc bpc" id="L43" title="1 of 2 branches missed.">        if (date == null) {</span>
+<span class="nc" id="L44">            date = LocalDate.now();</span>
+        }
+<span class="fc" id="L46">        var from = date.atStartOfDay().atOffset(ZoneOffset.UTC);</span>
+<span class="fc" id="L47">        var to = date.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);</span>
+<span class="fc" id="L48">        var rows = sales.findSalesBetween(from, to);</span>
+<span class="fc" id="L49">        var total = rows.stream()</span>
+<span class="fc" id="L50">                .map(s -&gt; s.getTotalAmount())</span>
+<span class="fc" id="L51">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+<span class="fc" id="L52">        return new DailySalesReport(date, rows.size(), total);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;MovementResponse&gt; movements(Long productId) {
+<span class="fc" id="L57">        return inventoryService.history(productId);</span>
+    }
+
+    private ProductInventoryReport toProductInventoryReport(Product p) {
+<span class="fc" id="L61">        BigDecimal stockValue = p.getUnitPrice().multiply(BigDecimal.valueOf(p.getCurrentStock()));</span>
+<span class="fc" id="L62">        return new ProductInventoryReport(</span>
+<span class="fc" id="L63">                p.getId(),</span>
+<span class="fc" id="L64">                p.getSku(),</span>
+<span class="fc" id="L65">                p.getName(),</span>
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">                p.getCategory() != null ? p.getCategory().getName() : &quot;Unassigned&quot;,</span>
+<span class="fc" id="L67">                p.getCurrentStock(),</span>
+<span class="fc" id="L68">                p.getReorderLevel(),</span>
+                stockValue
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

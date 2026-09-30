@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InventoryService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Inventory POS Service</a> &gt; <a href="index.source.html" class="el_package">com.masterclass.inventory.service</a> &gt; <span class="el_source">InventoryService.java</span></div><h1>InventoryService.java</h1><pre class="source lang-java linenums">package com.masterclass.inventory.service;
+
+import com.masterclass.inventory.dto.InventoryDtos.AdjustmentCommand;
+import com.masterclass.inventory.dto.InventoryDtos.InventoryCommand;
+import com.masterclass.inventory.dto.InventoryDtos.MovementResponse;
+import com.masterclass.inventory.entity.InventoryMovement;
+import com.masterclass.inventory.entity.MovementType;
+import com.masterclass.inventory.entity.Product;
+import com.masterclass.inventory.entity.ProductStatus;
+import com.masterclass.inventory.exception.BusinessException;
+import com.masterclass.inventory.exception.NotFoundException;
+import com.masterclass.inventory.repository.InventoryMovementRepository;
+import com.masterclass.inventory.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class InventoryService {
+
+    private final ProductRepository products;
+    private final InventoryMovementRepository movements;
+
+    @Transactional
+    public MovementResponse replenish(InventoryCommand c) {
+<span class="fc" id="L30">        return move(c.productId(), MovementType.REPLENISHMENT, c.quantity(), c.user());</span>
+    }
+
+    @Transactional
+    public MovementResponse adjust(AdjustmentCommand c) {
+<span class="fc bfc" id="L35" title="All 4 branches covered.">        if (c.type() != MovementType.ADJUSTMENT_IN &amp;&amp; c.type() != MovementType.ADJUSTMENT_OUT) {</span>
+<span class="fc" id="L36">            throw new BusinessException(&quot;Invalid adjustment type: &quot; + c.type() + &quot;. Only ADJUSTMENT_IN and ADJUSTMENT_OUT are permitted.&quot;);</span>
+        }
+<span class="fc" id="L38">        return move(c.productId(), c.type(), c.quantity(), c.user());</span>
+    }
+
+    @Transactional
+    public MovementResponse move(Long pid, MovementType type, int qty, String user) {
+<span class="pc bpc" id="L43" title="1 of 2 branches missed.">        if (qty &lt;= 0) {</span>
+<span class="nc" id="L44">            throw new BusinessException(&quot;Movement quantity must be greater than zero&quot;);</span>
+        }
+
+<span class="fc" id="L47">        Product p = products.findById(pid)</span>
+<span class="fc" id="L48">                .orElseThrow(() -&gt; new NotFoundException(&quot;Product not found with ID: &quot; + pid));</span>
+
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        if (p.getStatus() != ProductStatus.ACTIVE) {</span>
+<span class="fc" id="L51">            throw new BusinessException(&quot;Cannot mutate inventory for inactive product: &quot; + p.getSku());</span>
+        }
+
+<span class="fc bfc" id="L54" title="All 4 branches covered.">        if (type == MovementType.REPLENISHMENT || type == MovementType.ADJUSTMENT_IN) {</span>
+<span class="fc" id="L55">            p.increaseStock(qty);</span>
+<span class="pc bpc" id="L56" title="3 of 4 branches missed.">        } else if (type == MovementType.ADJUSTMENT_OUT || type == MovementType.SALE) {</span>
+<span class="fc bfc" id="L57" title="All 2 branches covered.">            if (p.getCurrentStock() &lt; qty) {</span>
+<span class="fc" id="L58">                throw new BusinessException(&quot;Insufficient stock for product &quot; + p.getSku()</span>
+<span class="fc" id="L59">                        + &quot; (available: &quot; + p.getCurrentStock() + &quot;, requested: &quot; + qty + &quot;)&quot;);</span>
+            }
+<span class="fc" id="L61">            p.decreaseStock(qty);</span>
+        } else {
+<span class="nc" id="L63">            throw new BusinessException(&quot;Unsupported movement type: &quot; + type);</span>
+        }
+
+<span class="fc" id="L66">        InventoryMovement m = movements.save(InventoryMovement.builder()</span>
+<span class="fc" id="L67">                .product(p)</span>
+<span class="fc" id="L68">                .movementType(type)</span>
+<span class="fc" id="L69">                .quantity(qty)</span>
+<span class="fc" id="L70">                .date(OffsetDateTime.now())</span>
+<span class="fc" id="L71">                .user(user)</span>
+<span class="fc" id="L72">                .build());</span>
+
+<span class="fc" id="L74">        return new MovementResponse(</span>
+<span class="fc" id="L75">                m.getId(),</span>
+<span class="fc" id="L76">                p.getId(),</span>
+<span class="fc" id="L77">                p.getSku(),</span>
+<span class="fc" id="L78">                m.getMovementType(),</span>
+<span class="fc" id="L79">                m.getQuantity(),</span>
+<span class="fc" id="L80">                m.getDate(),</span>
+<span class="fc" id="L81">                m.getUser()</span>
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;MovementResponse&gt; history(Long productId) {
+<span class="fc bfc" id="L87" title="All 2 branches covered.">        if (!products.existsById(productId)) {</span>
+<span class="fc" id="L88">            throw new NotFoundException(&quot;Product not found with ID: &quot; + productId);</span>
+        }
+<span class="fc" id="L90">        return movements.findByProductIdOrderByDateDesc(productId).stream()</span>
+<span class="fc" id="L91">                .map(m -&gt; new MovementResponse(</span>
+<span class="fc" id="L92">                        m.getId(),</span>
+<span class="fc" id="L93">                        m.getProduct().getId(),</span>
+<span class="fc" id="L94">                        m.getProduct().getSku(),</span>
+<span class="fc" id="L95">                        m.getMovementType(),</span>
+<span class="fc" id="L96">                        m.getQuantity(),</span>
+<span class="fc" id="L97">                        m.getDate(),</span>
+<span class="fc" id="L98">                        m.getUser()</span>
+<span class="fc" id="L99">                )).toList();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
