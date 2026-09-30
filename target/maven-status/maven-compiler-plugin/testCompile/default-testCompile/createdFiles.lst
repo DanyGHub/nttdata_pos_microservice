@@ -1,0 +1,5 @@
+com\masterclass\inventory\service\SaleServiceTest.class
+com\masterclass\inventory\service\InventoryServiceTest.class
+com\masterclass\inventory\service\ProductServiceTest.class
+com\masterclass\inventory\service\ReportServiceTest.class
+com\masterclass\inventory\integration\ProductApiIntegrationTest.class
