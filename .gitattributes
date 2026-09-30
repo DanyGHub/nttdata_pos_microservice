@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Forzar saltos de línea LF para scripts de Linux y SQL
+*.sh text eol=lf
+*.sql text eol=lf

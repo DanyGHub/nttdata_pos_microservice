@@ -16,17 +16,31 @@ services:
       interval: 10s
       retries: 20
       start_period: 30s
+
+  sqlserver-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    network_mode: "service:sqlserver"
+    environment:
+      MSSQL_SA_PASSWORD: "YourStrongPassword123!"
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d
+    entrypoint: [ "/bin/bash", "/docker-entrypoint-initdb.d/03-init.sh" ]
+
   inventory-service:
     build: .
     container_name: inventory-pos-service
     depends_on:
-      sqlserver:
-        condition: service_healthy
+      sqlserver-init:
+        condition: service_completed_successfully
     environment:
       SPRING_DATASOURCE_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=grocery_inventory;encrypt=true;trustServerCertificate=true"
       SPRING_DATASOURCE_USERNAME: "sa"
       SPRING_DATASOURCE_PASSWORD: "YourStrongPassword123!"
     ports:
       - "8080:8080"
+
 volumes:
   sqlserver_data:
